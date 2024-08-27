@@ -1,0 +1,17 @@
+*
+
+!.gitignore
+!README.md
+!LICENSE.md
+!CMakeLists.txt
+
+!/src
+!/src/*
+!/include
+!/include/*
+
+!/doc
+!/doc/*
+
+!/example
+!/example/*
