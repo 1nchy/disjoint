@@ -53,21 +53,16 @@ template <typename _Value, typename _Alloc> struct disjoint_set_alloc : public _
 };
 
 /**
- * @brief disjoint_set (a short tree)
- * @implements implemented by a hash_set
+ * @brief disjoint set, a container for managing the set to which elements belongs
+ * @tparam _Key type of key object
+ * @tparam _Hash hashing function object type, defaults to std::hash<_Key>.
+ * @tparam _Alloc allocator type, defaults to std::allocator<_Key>.
+ * @implements implemented by hash table and short tree
  * @details
- *   MEMORY:
- *   hash_table _h: store the node pointers of the short_tree
- *   hash_table _sth: store <hash_code, short_tree*>
- * 
- *   API:
- *   add(e): create a disjoint_set with e as root, or only add e
- *   del(e): delete a from disjoint_set
- *     if e is root, select another element as root
- *       
- *   there's a root element in each bucket
+ *   ELEMENTS:
+ *   unordered_map<key_type, node_type*> _h: store node pointers for each key
+ *   unordered_map<const node_type*, tree_type*> _sth: store each short tree
 */
-
 template <typename _Key,typename _Hash, typename _Alloc>
 struct disjoint_set : public disjoint_set_alloc<std::nullptr_t, _Alloc> {
     typedef disjoint_set_alloc<std::nullptr_t, _Alloc> base;
@@ -91,18 +86,58 @@ public:
     self& operator=(const self& _rhs);
     virtual ~disjoint_set() {}
 
+    /**
+     * @brief return whether the specific key in disjoint set
+     * @param _k the specific key
+     */
     bool existed(const key_type& _k) const { return _h.count(_k) != 0; }
-    tree_type* delegate(const key_type& _k) const;
-    tree_type* delegate(node_type* const _n) const;
+    /**
+     * @brief return the number of elements classification
+     */
     size_t classification() const { return _sth.size(); }
+    /**
+     * @brief return the number of elements
+     */
     size_t size() const { return _h.size(); }
+    /**
+     * @brief return whether the given 2 keys in the one classification
+     * @param _x the given key
+     * @param _y the given key
+     */
     bool sibling(const key_type& _x, const key_type& _y) const;
+    /**
+     * @brief add the specific key to a new classification
+     * @param _k the specific key
+     * @return return false when the key is already in disjoint set or the key fails to be added
+     */
     bool add(const key_type& _k);
+    /**
+     * @brief add the specific key to the classification, which contains the given existed key
+     * @param _k the specific key
+     * @param _existed_key the given existed key
+     * @return return false when the @c _existed_key is not in disjoint set or the key fails to be added
+     */
     bool add_to(const key_type& _k, const key_type& _existed_key);
+    /**
+     * @brief delete the specific key
+     * @param _k the specific key
+     * @return return false when the key is not in disjoint set or the key fails to be deleted
+     */
     bool del(const key_type& _k);
+    /**
+     * @brief merge 2 classifications, which contains the given 2 keys respectively
+     * @param _x the given key
+     * @param _y the given key
+     * @return return false when the keys are not in disjoint set or the classifications fail to be merged
+     */
     bool merge(const key_type& _x, const key_type& _y);
-    // bool elect(const key_type& _k);
+    /**
+     * @brief return whether no element in the disjoint set
+     */
     bool empty() const { return _h.empty(); }
+    /**
+     * @brief clear all keys and classifications
+     */
     void clear();
 
 // check function
@@ -111,7 +146,9 @@ public:
     // std::ostream& operator<<(std::ostream&, const disjoint_set<_K, _H, _A>&);
     // void demo(std::istream& _is = std::cin, std::ostream& _os = std::cout);
 
-protected:
+private:
+    tree_type* _M_delegate(const key_type& _k) const;
+    tree_type* _M_delegate(node_type* const _n) const;
     void _M_assign(const self& _rhs);
     /**
      * @brief update tree information in %_sth
@@ -133,12 +170,12 @@ disjoint_set<_Key, _Hash, _Alloc>::operator=(const self& _rhs) -> self& {
 };
 
 template <typename _Key,typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::delegate(const key_type& _k) const -> tree_type* {
+disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(const key_type& _k) const -> tree_type* {
     if (!existed(_k)) return nullptr;
-    return delegate(_h.at(_k));
+    return _M_delegate(_h.at(_k));
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::delegate(node_type* const _n) const -> tree_type* {
+disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(node_type* const _n) const -> tree_type* {
     if (_n == nullptr) return nullptr;
     return _sth.at(tree_type::query_header(_n));
 };
@@ -160,7 +197,7 @@ template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _existed_key) -> bool {
     if (!existed(_existed_key)) return false;
     del(_k);
-    tree_type* const _st = delegate(_existed_key);
+    tree_type* const _st = _M_delegate(_existed_key);
     node_type* const _n = _st->add(nullptr);
     _h[_k] = _n;
     return true;
@@ -169,7 +206,7 @@ template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
     if (!existed(_k)) return false;
     node_type* _n = _h.at(_k);
-    tree_type* const _st = delegate(_k);
+    tree_type* const _st = _M_delegate(_k);
     const auto* _oh = _st->header();
     _st->del(_n);
     _M_update_tree_info(_oh, _st);
@@ -179,8 +216,8 @@ disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y) -> bool {
     if (!existed(_x) || !existed(_y)) return false;
-    tree_type* const _xt = delegate(_x);
-    tree_type* const _yt = delegate(_y);
+    tree_type* const _xt = _M_delegate(_x);
+    tree_type* const _yt = _M_delegate(_y);
     const auto* _xth = _xt->header();
     const auto* _yth = _yt->header();
     _xt->merge(*_yt);
@@ -192,7 +229,7 @@ disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y)
 // disjoint_set<_Key, _Hash, _Alloc>::elect(const key_type& _k) -> bool {
 //     if (!existed(_k)) return false;
 //     node_type* _n = *(_h.find(_k));
-//     tree_type& _t = *delegate(_n);
+//     tree_type& _t = *_M_delegate(_n);
 //     hash_code _oc = delegate_id(_t).second;
 //     _h.erase(_k); _h.erase(_ExtKey()(_t.root()->val()));
 //     _t.elect(_n);
@@ -228,7 +265,7 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_assign(const self& _rhs) -> void {
             _h[_k] = _st->add(nullptr);
         }
         else {
-            auto* const _st = delegate(_treed_keys[_idx]);
+            auto* const _st = _M_delegate(_treed_keys[_idx]);
             _h[_k] = _st->add(nullptr);
         }
     }
