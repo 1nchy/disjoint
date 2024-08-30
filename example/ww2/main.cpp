@@ -4,8 +4,8 @@
 
 int main(void) {
     icy::disjoint_set<std::string> _countries;
-    _countries.add("chn");
-    _countries.add_to("prc", "chn");
+    _countries.add("chi");
+    _countries.add_to("prc", "chi");
     _countries.add("jap");
     _countries.add("ger");
     _countries.add("eng");
@@ -17,7 +17,7 @@ int main(void) {
     _countries.add("usa");
     _countries.add_to("phi", "usa");
     _countries.merge("usa", "eng");
-    _countries.merge("chn", "eng");
+    _countries.merge("chi", "eng");
     auto _support1 = _countries.sibling("prc", "pol");
     _countries.add_to("ita", "eng");
     auto _support2 = _countries.sibling("ita", "phi");
