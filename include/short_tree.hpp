@@ -408,9 +408,9 @@ short_tree<_Tp, _Alloc>::_M_depose_child(node_type* _x) -> node_type* {
     assert(_x->_first_child == nullptr && _x->_last_child == nullptr);
     node_type* const _p = _x->_parent; // _p != nullptr
     if (_p->_first_child == _x) _p->_first_child = _x->_right_bro;
-    else _x->_left_bro->_right_bro = _x->_right_bro;
+    else if (_x->_left_bro != nullptr) _x->_left_bro->_right_bro = _x->_right_bro;
     if (_p->_last_child == _x) _p->_last_child = nullptr;
-    else _x->_right_bro->_left_bro = _x->_left_bro;
+    else if (_x->_right_bro != nullptr) _x->_right_bro->_left_bro = _x->_left_bro;
     if (_x == root()) _p->_parent = nullptr;
     return _x->_right_bro;
 };
