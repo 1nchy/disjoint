@@ -702,7 +702,8 @@ short_tree<_Tp, _Alloc>::check() const -> unsigned {
     node_type* _r = root();
     if (_r == nullptr) {
         if (_m_impl._header._left_bro != nullptr || _m_impl._header._right_bro != nullptr ||
-        _m_impl._header._first_child != nullptr || _m_impl._header._last_child != nullptr) {
+        _m_impl._header._first_child != nullptr || _m_impl._header._last_child != nullptr ||
+        _m_impl._header._parent != nullptr) {
             return 5;
         }
         return 0;
