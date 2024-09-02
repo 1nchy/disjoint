@@ -25,20 +25,6 @@ template <typename _Value, typename _Alloc> struct disjoint_set_alloc : public _
     const elt_allocator_type& _M_get_elt_allocator() const { return *static_cast<const elt_allocator_type*>(this); }
     tree_allocator_type _M_get_tree_allocator() const { return tree_allocator_type(_M_get_elt_allocator()); }
 
-    // tree_type* _M_allocate_tree() {
-    //     tree_allocator_type _tree_alloc = _M_get_tree_allocator();
-    //     auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
-    //     tree_type* _p = std::addressof(*_ptr);
-    //     ::new(_p) tree_type();
-    //     return _p;
-    // }
-    // tree_type* _M_allocate_tree(const tree_type& _x) {
-    //     tree_allocator_type _tree_alloc = _M_get_tree_allocator();
-    //     auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
-    //     tree_type* _p = std::addressof(*_ptr);
-    //     tree_alloc_traits::construct(_tree_alloc, _p, _x);
-    //     return _p;
-    // }
     template <typename... _Args> tree_type* _M_allocate_tree(_Args&&... _args) {
         tree_allocator_type _tree_alloc = _M_get_tree_allocator();
         auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
