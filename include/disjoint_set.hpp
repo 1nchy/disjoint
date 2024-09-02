@@ -13,8 +13,9 @@ template <typename _Key,typename _Hash = std::hash<_Key>, typename _Alloc = std:
 template <typename _Value, typename _Alloc> struct disjoint_set_alloc;
 
 template <typename _Value, typename _Alloc> struct disjoint_set_alloc : public _Alloc {
-    typedef short_tree<_Value> tree_type;
-    typedef typename tree_type::node_type node_type;
+    using tree_type = short_tree<_Value>;
+    using node_type = typename tree_type::node_type;
+    using header_type = typename tree_type::header_type;
     typedef _Alloc elt_allocator_type;
     typedef std::allocator_traits<elt_allocator_type> elt_alloc_traits;
     typedef typename elt_alloc_traits::template rebind_alloc<tree_type> tree_allocator_type;
@@ -24,20 +25,20 @@ template <typename _Value, typename _Alloc> struct disjoint_set_alloc : public _
     const elt_allocator_type& _M_get_elt_allocator() const { return *static_cast<const elt_allocator_type*>(this); }
     tree_allocator_type _M_get_tree_allocator() const { return tree_allocator_type(_M_get_elt_allocator()); }
 
-    tree_type* _M_allocate_tree() {
-        tree_allocator_type _tree_alloc = _M_get_tree_allocator();
-        auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
-        tree_type* _p = std::addressof(*_ptr);
-        ::new(_p) tree_type();
-        return _p;
-    }
-    tree_type* _M_allocate_tree(const tree_type& _x) {
-        tree_allocator_type _tree_alloc = _M_get_tree_allocator();
-        auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
-        tree_type* _p = std::addressof(*_ptr);
-        tree_alloc_traits::construct(_tree_alloc, _p, _x);
-        return _p;
-    }
+    // tree_type* _M_allocate_tree() {
+    //     tree_allocator_type _tree_alloc = _M_get_tree_allocator();
+    //     auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
+    //     tree_type* _p = std::addressof(*_ptr);
+    //     ::new(_p) tree_type();
+    //     return _p;
+    // }
+    // tree_type* _M_allocate_tree(const tree_type& _x) {
+    //     tree_allocator_type _tree_alloc = _M_get_tree_allocator();
+    //     auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
+    //     tree_type* _p = std::addressof(*_ptr);
+    //     tree_alloc_traits::construct(_tree_alloc, _p, _x);
+    //     return _p;
+    // }
     template <typename... _Args> tree_type* _M_allocate_tree(_Args&&... _args) {
         tree_allocator_type _tree_alloc = _M_get_tree_allocator();
         auto _ptr = tree_alloc_traits::allocate(_tree_alloc, 1);
@@ -64,22 +65,23 @@ template <typename _Value, typename _Alloc> struct disjoint_set_alloc : public _
  *   unordered_map<const node_type*, tree_type*> _sth: store each short tree
 */
 template <typename _Key,typename _Hash, typename _Alloc>
-struct disjoint_set : public disjoint_set_alloc<std::nullptr_t, _Alloc> {
-    typedef disjoint_set_alloc<std::nullptr_t, _Alloc> base;
-    typedef typename base::tree_type tree_type;
-    typedef typename base::node_type node_type;
+struct disjoint_set : public disjoint_set_alloc<void, _Alloc> {
+    typedef disjoint_set_alloc<void, _Alloc> base;
     typedef disjoint_set<_Key, _Hash, _Alloc> self;
+    using tree_type = typename base::tree_type;
+    using node_type = typename base::node_type;
+    using header_type = typename base::header_type;
 
     typedef _Key key_type;
 
     // <key_type, node_type*>
-    std::unordered_map<key_type, node_type*> _h;
+    std::unordered_map<key_type, const node_type*> _h;
     // <header*, tree_type*>
-    std::unordered_map<const node_type*, tree_type*> _sth;
+    std::unordered_map<const header_type*, tree_type*> _sth;
 
 public:
-    typedef typename std::unordered_map<_Key, node_type*>::iterator iterator;
-    typedef typename std::unordered_map<_Key, node_type*>::const_iterator const_iterator;
+    typedef typename std::unordered_map<_Key, const node_type*>::iterator iterator;
+    typedef typename std::unordered_map<_Key, const node_type*>::const_iterator const_iterator;
 
     disjoint_set() = default;
     disjoint_set(const self& _rhs);
@@ -142,19 +144,16 @@ public:
 
 // check function
     unsigned check() const;
-    // template <typename _K, typename _H, typename _A> friend
-    // std::ostream& operator<<(std::ostream&, const disjoint_set<_K, _H, _A>&);
-    // void demo(std::istream& _is = std::cin, std::ostream& _os = std::cout);
 
 private:
     tree_type* _M_delegate(const key_type& _k) const;
-    tree_type* _M_delegate(node_type* const _n) const;
+    tree_type* _M_delegate(const node_type* const _n) const;
     void _M_assign(const self& _rhs);
     /**
      * @brief update tree information in %_sth
      * @details it's recommended that storing the hash_code of a tree before its any operation.
     */
-    void _M_update_tree_info(const node_type* _header, tree_type* const _t);
+    void _M_update_sth(tree_type* const _t);
 };
 
 template <typename _Key,typename _Hash, typename _Alloc>
@@ -175,23 +174,23 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(const key_type& _k) const -> tree
     return _M_delegate(_h.at(_k));
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(node_type* const _n) const -> tree_type* {
+disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(const node_type* const _n) const -> tree_type* {
     if (_n == nullptr) return nullptr;
-    return _sth.at(tree_type::query_header(_n));
+    return _sth.at(tree_type::query_mark(_n));
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _x, const key_type& _y) const -> bool {
     if (!existed(_x) || !existed(_y)) return false;
     if (_x == _y) return true;
-    return tree_type::query_header(_h.at(_x)) == tree_type::query_header(_h.at(_y));
+    return tree_type::query_mark(_h.at(_x)) == tree_type::query_mark(_h.at(_y));
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
     if (existed(_k)) return false;
     tree_type* const _st = this->_M_allocate_tree();
-    node_type* _n = _st->add(nullptr);
-    _sth[_st->header()] = _st;
+    const node_type* _n = _st->add();
     _h[_k] = _n;
+    _M_update_sth(_st);
     return true;
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
@@ -200,19 +199,19 @@ disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _e
     if (sibling(_k, _existed_key)) return true;
     del(_k);
     tree_type* const _st = _M_delegate(_existed_key);
-    node_type* const _n = _st->add(nullptr);
+    const node_type* const _n = _st->add();
     _h[_k] = _n;
+    _M_update_sth(_st);
     return true;
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
     if (!existed(_k)) return false;
-    node_type* _n = _h.at(_k);
+    const node_type* _n = _h.at(_k);
     tree_type* const _st = _M_delegate(_k);
-    const auto* _oh = _st->header();
     _st->del(_n);
-    _M_update_tree_info(_oh, _st);
     _h.erase(_k);
+    _M_update_sth(_st);
     return true;
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
@@ -221,25 +220,11 @@ disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y)
     if (sibling(_x, _y)) return true;
     tree_type* const _xt = _M_delegate(_x);
     tree_type* const _yt = _M_delegate(_y);
-    const auto* _xth = _xt->header();
-    const auto* _yth = _yt->header();
     _xt->merge(*_yt);
-    _M_update_tree_info(_xth, _xt);
-    _M_update_tree_info(_yth, _yt);
+    _M_update_sth(_xt);
+    _M_update_sth(_yt);
     return true;
 };
-// template <typename _Key,typename _Hash, typename _Alloc> auto
-// disjoint_set<_Key, _Hash, _Alloc>::elect(const key_type& _k) -> bool {
-//     if (!existed(_k)) return false;
-//     node_type* _n = *(_h.find(_k));
-//     tree_type& _t = *_M_delegate(_n);
-//     hash_code _oc = delegate_id(_t).second;
-//     _h.erase(_k); _h.erase(_ExtKey()(_t.root()->val()));
-//     _t.elect(_n);
-//     _h.insert(_n); _h.insert(_t.root());
-//     _M_update_tree_info(_oc, _t);
-//     return true;
-// };
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::clear() -> void {
     _h.clear();
@@ -265,25 +250,24 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_assign(const self& _rhs) -> void {
         if (_idx == _treed_keys.size()) {
             auto* const _st = this->_M_allocate_tree();
             _sth[_st->header()] = _st;
-            _h[_k] = _st->add(nullptr);
+            _h[_k] = _st->add();
         }
         else {
             auto* const _st = _M_delegate(_treed_keys[_idx]);
-            _h[_k] = _st->add(nullptr);
+            _h[_k] = _st->add();
         }
     }
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_update_tree_info(const node_type* _oh, tree_type* const _t) -> void {
+disjoint_set<_Key, _Hash, _Alloc>::_M_update_sth(tree_type* const _t) -> void {
     if (_t->empty()) {
-        this->_M_deallocate_tree(_sth.at(_oh));
-        _sth.erase(_oh);
+        assert(_sth.contains(_t->mark()));
+        _sth.erase(_t->mark());
+        this->_M_deallocate_tree(_t);
         return;
     }
-    const node_type* _r = _t->header();
-    if (_r != _oh) {
-        _sth.erase(_oh);
-        _sth[_r] = _t;
+    else if (!_sth.contains(_t->mark())) {
+        _sth[_t->mark()] = _t;
     }
 };
 
@@ -294,20 +278,23 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_update_tree_info(const node_type* _oh, tre
  *   1 : null tree pointer or empty tree in %_sth
  *   2 : null node in %_h
  *   3 : node not in 
- *   4 : 
+ *   4 : count from _sth \eq _h
  *   100+ : error in short tree inside
 */
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::check() const -> unsigned {
+    size_t _count_from_sth = 0ul;
     for (auto _i = _sth.cbegin(); _i != _sth.cend(); ++_i) {
         if (_i->second == nullptr || (_i->second)->empty()) return 1;
         int _tmp = _i->second->check();
         if (_tmp != 0) return 100 + _tmp;
+        _count_from_sth += _i->second->size();
     }
+    if (_count_from_sth != _h.size()) return 4;
     for (auto _i = _h.cbegin(); _i != _h.cend(); ++_i) {
         if (_i->second == nullptr) return 2;
-        const auto* _head = tree_type::query_header(_i->second);
-        if (!_sth.contains(_head)) return 3;
+        const auto* _mark = tree_type::query_mark(_i->second);
+        if (!_sth.contains(_mark)) return 3;
     }
     return 0;
 };
