@@ -220,7 +220,7 @@ public:
     void clear();
     void elect(node_type* _e);
     const node_type* header() const { return &_m_impl._header; }
-    int check() const;
+    unsigned check() const;
     template <typename _NodeHandler> void traverse(const _NodeHandler& _handler) const { _M_traverse(root(), _handler); };
     // static node_type* query (node_type* _x);
     static const node_type* query_header (const node_type* _x);
@@ -286,7 +286,7 @@ protected:
     void _M_add(node_type* _x);
     void _M_del(node_type* _x);
     template <typename _NodeHandler> void _M_traverse(node_type* _x, const _NodeHandler& _handler) const;
-    template <typename _Ca> int _M_check(const node_type* const _p, node_type* const _x, const _Ca& _check_assistant) const;
+    template <typename _Ca> unsigned _M_check(const node_type* const _p, node_type* const _x, const _Ca& _check_assistant) const;
 };
 /// (de)constructor
 template <typename _Tp, typename _Alloc>
@@ -408,9 +408,9 @@ short_tree<_Tp, _Alloc>::_M_depose_child(node_type* _x) -> node_type* {
     assert(_x->_first_child == nullptr && _x->_last_child == nullptr);
     node_type* const _p = _x->_parent; // _p != nullptr
     if (_p->_first_child == _x) _p->_first_child = _x->_right_bro;
-    else _x->_left_bro->_right_bro = _x->_right_bro;
+    else if (_x->_left_bro != nullptr) _x->_left_bro->_right_bro = _x->_right_bro;
     if (_p->_last_child == _x) _p->_last_child = nullptr;
-    else _x->_right_bro->_left_bro = _x->_left_bro;
+    else if (_x->_right_bro != nullptr) _x->_right_bro->_left_bro = _x->_left_bro;
     if (_x == root()) _p->_parent = nullptr;
     return _x->_right_bro;
 };
@@ -419,7 +419,7 @@ short_tree<_Tp, _Alloc>::_M_swap_node_value(node_type* const _x, node_type* cons
     if (_x == nullptr || _y == nullptr || _x == _y) return;
     assert(_x != &_m_impl._header && _y != &_m_impl._header);
     std::swap(_x->val(), _y->val());
-}
+};
 template <typename _Tp, typename _Alloc> auto
 short_tree<_Tp, _Alloc>::_M_swap_node(node_type* const _x, node_type* const _y) -> void {
     // todo : when _x->_parent == _y
@@ -696,13 +696,14 @@ short_tree<_Tp, _Alloc>::query_header(const node_type* _x) -> const node_type* {
  *   6 : error in brothers' link
 */
 template <typename _Tp, typename _Alloc> auto
-short_tree<_Tp, _Alloc>::check() const -> int {
+short_tree<_Tp, _Alloc>::check() const -> unsigned {
     std::vector<const node_type*> _vn;
     // _header check
     node_type* _r = root();
     if (_r == nullptr) {
         if (_m_impl._header._left_bro != nullptr || _m_impl._header._right_bro != nullptr ||
-        _m_impl._header._first_child != nullptr || _m_impl._header._last_child != nullptr) {
+        _m_impl._header._first_child != nullptr || _m_impl._header._last_child != nullptr ||
+        _m_impl._header._parent != nullptr) {
             return 5;
         }
         return 0;
@@ -711,7 +712,7 @@ short_tree<_Tp, _Alloc>::check() const -> int {
         return 4;
     }
     // recursively check
-    int _result = _M_check(&_m_impl._header, root(), [&](const node_type* _x) {
+    unsigned _result = _M_check(&_m_impl._header, root(), [&](const node_type* _x) {
         _vn.push_back(_x);
     });
     if (_result != 0) return _result;
@@ -719,7 +720,7 @@ short_tree<_Tp, _Alloc>::check() const -> int {
     return 0;
 };
 template <typename _Tp, typename _Alloc> template <typename _Ca> auto
-short_tree<_Tp, _Alloc>::_M_check(const node_type* const _p, node_type* const _x, const _Ca& _check_assistant) const -> int {
+short_tree<_Tp, _Alloc>::_M_check(const node_type* const _p, node_type* const _x, const _Ca& _check_assistant) const -> unsigned {
     if (_x->_parent != _p) return 1;
     _check_assistant(_x);
     for (node_type* _i = _x->_first_child; _i != nullptr; _i = _i->_right_bro) {
@@ -732,7 +733,7 @@ short_tree<_Tp, _Alloc>::_M_check(const node_type* const _p, node_type* const _x
         if (_i->_right_bro != nullptr && _i->_right_bro->_left_bro != _i) {
             return 6;
         }
-        int _result = _M_check(_x, _i, _check_assistant);
+        unsigned _result = _M_check(_x, _i, _check_assistant);
         if (_result != 0) return _result;
     }
     return 0;

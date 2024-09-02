@@ -141,7 +141,7 @@ public:
     void clear();
 
 // check function
-    int check() const;
+    unsigned check() const;
     // template <typename _K, typename _H, typename _A> friend
     // std::ostream& operator<<(std::ostream&, const disjoint_set<_K, _H, _A>&);
     // void demo(std::istream& _is = std::cin, std::ostream& _os = std::cout);
@@ -182,6 +182,7 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(node_type* const _n) const -> tre
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _x, const key_type& _y) const -> bool {
     if (!existed(_x) || !existed(_y)) return false;
+    if (_x == _y) return true;
     return tree_type::query_header(_h.at(_x)) == tree_type::query_header(_h.at(_y));
 };
 template <typename _Key,typename _Hash, typename _Alloc> auto
@@ -196,6 +197,7 @@ disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _existed_key) -> bool {
     if (!existed(_existed_key)) return false;
+    if (sibling(_k, _existed_key)) return true;
     del(_k);
     tree_type* const _st = _M_delegate(_existed_key);
     node_type* const _n = _st->add(nullptr);
@@ -216,6 +218,7 @@ disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
 template <typename _Key,typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y) -> bool {
     if (!existed(_x) || !existed(_y)) return false;
+    if (sibling(_x, _y)) return true;
     tree_type* const _xt = _M_delegate(_x);
     tree_type* const _yt = _M_delegate(_y);
     const auto* _xth = _xt->header();
@@ -290,20 +293,22 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_update_tree_info(const node_type* _oh, tre
  * @returns 0 : normal
  *   1 : null tree pointer or empty tree in %_sth
  *   2 : null node in %_h
- *   3 : 
+ *   3 : node not in 
  *   4 : 
  *   100+ : error in short tree inside
 */
 template <typename _Key,typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::check() const -> int {
+disjoint_set<_Key, _Hash, _Alloc>::check() const -> unsigned {
     for (auto _i = _sth.cbegin(); _i != _sth.cend(); ++_i) {
         if (_i->second == nullptr || (_i->second)->empty()) return 1;
         int _tmp = _i->second->check();
         if (_tmp != 0) return 100 + _tmp;
     }
-    // for (auto _i = _h.cbegin(); _i != _h.cend(); ++_i) {
-    //     if (*_i == nullptr) return 2;
-    // }
+    for (auto _i = _h.cbegin(); _i != _h.cend(); ++_i) {
+        if (_i->second == nullptr) return 2;
+        const auto* _head = tree_type::query_header(_i->second);
+        if (!_sth.contains(_head)) return 3;
+    }
     return 0;
 };
 
