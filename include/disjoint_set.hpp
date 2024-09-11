@@ -34,6 +34,7 @@ struct disjoint_set : public short_tree::alloc<void, _Alloc> {
 
 public:
     disjoint_set() = default;
+    disjoint_set(std::initializer_list<std::initializer_list<key_type>>);
     disjoint_set(const self& _rhs);
     self& operator=(const self& _rhs);
     virtual ~disjoint_set();
@@ -120,6 +121,14 @@ private:
     void _M_deallocate_header_and_node_recursively(header_type* const _h) const;
 };
 
+template <typename _Key, typename _Hash, typename _Alloc>
+disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(std::initializer_list<std::initializer_list<key_type>> _llk) { // todo
+    for (auto _i = _llk.begin(); _i != _llk.end(); ++_i) {
+        for (auto _j = _i->begin(); _j != _i->end(); ++_j) {
+            add_to(*_j, *(_i->begin()));
+        }
+    }
+};
 template <typename _Key, typename _Hash, typename _Alloc>
 disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(const self& _rhs) { // todo
     _M_assign(_rhs);
