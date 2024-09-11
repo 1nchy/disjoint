@@ -3,18 +3,15 @@
 #include <string>
 
 int main(void) {
-    icy::disjoint_set<std::string> _countries;
-    _countries.add("chi");
-    _countries.add_to("prc", "chi");
-    _countries.add("jap");
-    _countries.add("ger");
-    _countries.add("eng");
-    _countries.add_to("fra", "eng");
-    _countries.add("pol");
-    _countries.merge("pol", "fra");
+    icy::disjoint_set<std::string> _countries {
+        {"chi", "prc"},
+        {"jap"},
+        {"ger"},
+        {"eng", "fra", "pol"},
+        {"sov"},
+        {"usa"}
+    };
     _countries.add_to("ita", "ger");
-    _countries.add("sov");
-    _countries.add("usa");
     _countries.add_to("phi", "usa");
     _countries.merge("usa", "eng");
     _countries.merge("chi", "eng");
