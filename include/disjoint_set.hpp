@@ -64,12 +64,12 @@ public:
      */
     bool add(const key_type& _k);
     /**
-     * @brief add the specific key to the classification, which contains the given existed key
+     * @brief add the specific key to the classification, which contains the given contains key
      * @param _k the specific key
-     * @param _existed_key the given existed key
-     * @return return false when the @c _existed_key is not in disjoint set or the key fails to be added
+     * @param _target the given contains key
+     * @return return false when the @c _target is not in disjoint set or the key fails to be added
      */
-    bool add_to(const key_type& _k, const key_type& _existed_key);
+    bool add_to(const key_type& _k, const key_type& _target);
     /**
      * @brief delete the specific key
      * @param _k the specific key
@@ -163,16 +163,21 @@ disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
     return true;
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _existed_key) -> bool {
-    if (!contains(_existed_key)) return false;
-    if (sibling(_k, _existed_key)) return true;
-    del(_k);
-    header_type* const _root = _M_final_header(_nodes.at(_existed_key));
-    node_type* const _n = this->_M_allocate_node();
-    _root->append_node(_n);
-    _nodes[_k] = _n;
-    _M_update_headers(_root);
-    return true;
+disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _target) -> bool {
+    if (contains(_target)) {
+        if (sibling(_k, _target)) return true;
+        del(_k);
+        header_type* const _root = _M_final_header(_nodes.at(_target));
+        node_type* const _n = this->_M_allocate_node();
+        _root->append_node(_n);
+        _nodes[_k] = _n;
+        _M_update_headers(_root);
+        return true;
+    }
+    else {
+        if (_k != _target) return false;
+        return add(_k);
+    }
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
