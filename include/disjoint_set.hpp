@@ -42,7 +42,7 @@ public:
      * @brief return whether the specific key in disjoint set
      * @param _k the specific key
      */
-    bool existed(const key_type& _k) const { return _nodes.count(_k) != 0; }
+    bool contains(const key_type& _k) const { return _nodes.count(_k) != 0; }
     /**
      * @brief return the number of elements classification
      */
@@ -138,7 +138,7 @@ disjoint_set<_Key, _Hash, _Alloc>::~disjoint_set() {
 
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(const key_type& _k) const -> header_type* {
-    if (!existed(_k)) return nullptr;
+    if (!contains(_k)) return nullptr;
     return _M_final_header(_nodes.at(_k));
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
@@ -148,13 +148,13 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(node_type* const _n) const -> hea
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _x, const key_type& _y) const -> bool {
-    if (!existed(_x) || !existed(_y)) return false;
+    if (!contains(_x) || !contains(_y)) return false;
     if (_x == _y) return true;
     return _M_final_header(_nodes.at(_x)) == _M_final_header(_nodes.at(_y));
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
-    if (existed(_k)) return false;
+    if (contains(_k)) return false;
     header_type* const _root = this->_M_allocate_header();
     node_type* const _n = this->_M_allocate_node();
     _root->append_node(_n);
@@ -164,7 +164,7 @@ disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _existed_key) -> bool {
-    if (!existed(_existed_key)) return false;
+    if (!contains(_existed_key)) return false;
     if (sibling(_k, _existed_key)) return true;
     del(_k);
     header_type* const _root = _M_final_header(_nodes.at(_existed_key));
@@ -176,7 +176,7 @@ disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _e
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
-    if (!existed(_k)) return false;
+    if (!contains(_k)) return false;
     node_type* const _n = _nodes.at(_k);
     header_type* const _root = _M_final_header_const(_n);
     header_type* const _h = _n->unhook();
@@ -188,7 +188,7 @@ disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y) -> bool {
-    if (!existed(_x) || !existed(_y)) return false;
+    if (!contains(_x) || !contains(_y)) return false;
     if (sibling(_x, _y)) return true;
     header_type* const _xr = _M_final_header(_nodes.at(_x));
     header_type* const _yr = _M_final_header(_nodes.at(_y));
