@@ -33,7 +33,7 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC ${PROJECT_SOURCE_DIR}/include
 )
 
-set(THIRD_LIB_NAME disjoint_set)
+set(THIRD_LIB_NAME disjoint)
 find_library(third_lib_${THIRD_LIB_NAME} ${THIRD_LIB_NAME} ../../lib)
 if (third_lib_${THIRD_LIB_NAME})
     target_link_libraries(${PROJECT_NAME}

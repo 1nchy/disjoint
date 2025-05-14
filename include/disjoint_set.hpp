@@ -65,18 +65,43 @@ public:
      */
     bool add(const key_type& _k);
     /**
-     * @brief add the specific key to the classification, which contains the given contains key
+     * @brief add the specific key to the classification, which contains the given key
      * @param _k the specific key
-     * @param _target the given contains key
+     * @param _target the given key
      * @return return false when the @c _target is not in disjoint set or the key fails to be added
      */
-    bool add_to(const key_type& _k, const key_type& _target);
+    bool add(const key_type& _k, const key_type& _target);
     /**
      * @brief delete the specific key
      * @param _k the specific key
      * @return return false when the key is not in disjoint set or the key fails to be deleted
      */
     bool del(const key_type& _k);
+    /**
+     * @brief delete all elements in the same classification as the specific key
+     * @param _k the specific key
+     * @return return false when the key is not in disjoint set or the key fails to be deleted
+     */
+    bool del_all(const key_type& _k);
+    /**
+     * @brief delete all elements in the classification, except the specific key
+     * @param _k the specific key
+     * @return return false when the key is not in disjoint set or the elements fail to be deleted
+     */
+    bool del_except(const key_type& _k);
+    /**
+     * @brief make the specific key join a new classification
+     * @param _k the specific key
+     * @return return false when the key is not in disjoint set or the key fails to be deleted
+     */
+    bool join(const key_type& _k);
+    /**
+     * @brief make the specific key join the classification, which contains the given key
+     * @param _k the specific key
+     * @param _target the given key
+     * @return return false when the keys are not in disjoint set or the key fails to be deleted
+     */
+    bool join(const key_type& _k, const key_type& _target);
     /**
      * @brief merge 2 classifications, which contains the given 2 keys respectively
      * @param _x the given key
@@ -118,23 +143,27 @@ private:
      * @brief remove empty headers (exclude roots)
      */
     void _M_remove_empty_headers(header_type* _h) const;
+    void _M_deallocate_header_recursively(header_type* const _h) const;
     void _M_deallocate_header_and_node_recursively(header_type* const _h) const;
 };
 
 template <typename _Key, typename _Hash, typename _Alloc>
-disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(std::initializer_list<std::initializer_list<key_type>> _llk) { // todo
+disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(std::initializer_list<std::initializer_list<key_type>> _llk) {
     for (auto _i = _llk.begin(); _i != _llk.end(); ++_i) {
+        if (_i->begin() != _i->end()) {
+            add(*(_i->begin()));
+        }
         for (auto _j = _i->begin(); _j != _i->end(); ++_j) {
-            add_to(*_j, *(_i->begin()));
+            add(*_j, *(_i->begin()));
         }
     }
 };
 template <typename _Key, typename _Hash, typename _Alloc>
-disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(const self& _rhs) { // todo
+disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(const self& _rhs) {
     _M_assign(_rhs);
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::operator=(const self& _rhs) -> self& { // todo
+disjoint_set<_Key, _Hash, _Alloc>::operator=(const self& _rhs) -> self& {
     if (&_rhs == this) return *this;
     clear();
     _M_assign(_rhs);
@@ -172,21 +201,14 @@ disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
     return true;
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::add_to(const key_type& _k, const key_type& _target) -> bool {
-    if (contains(_target)) {
-        if (sibling(_k, _target)) return true;
-        del(_k);
-        header_type* const _root = _M_final_header(_nodes.at(_target));
-        node_type* const _n = this->_M_allocate_node();
-        _root->append_node(_n);
-        _nodes[_k] = _n;
-        _M_update_headers(_root);
-        return true;
-    }
-    else {
-        if (_k != _target) return false;
-        return add(_k);
-    }
+disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k, const key_type& _target) -> bool {
+    if (contains(_k) || !contains(_target)) return false;
+    header_type* const _root = _M_final_header(_nodes.at(_target));
+    node_type* const _n = this->_M_allocate_node();
+    _root->append_node(_n);
+    _nodes[_k] = _n;
+    _M_update_headers(_root);
+    return true;
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
@@ -200,6 +222,76 @@ disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
     _M_update_headers(_root);
     return true;
 };
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::del_all(const key_type& _k) -> bool {
+    if (!contains(_k)) return false;
+    node_type* const _n = _nodes.at(_k);
+    header_type* const _root = _M_final_header_const(_n);
+    // erase all nodes and the header
+    for (auto _i = _nodes.cbegin(); _i != _nodes.cend();) {
+        node_type* const _node = _i->second;
+        if (_M_final_header_const(_node) == _root) {
+            _i = _nodes.erase(_i);
+            this->_M_deallocate_node(_node);
+            continue;
+        }
+        ++_i;
+    }
+    _headers.erase(_root);
+    _M_deallocate_header_recursively(_root);
+    return true;
+};
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::join(const key_type& _k) -> bool {
+    if (!contains(_k)) return false;
+    node_type* const _n = _nodes.at(_k);
+    header_type* const _root = _M_final_header_const(_n);
+    header_type* const _h = _n->unhook();
+    _M_remove_empty_headers(_h);
+    _M_update_headers(_root);
+    header_type* const _new_root = this->_M_allocate_header();
+    _new_root->append_node(_n);
+    _M_update_headers(_new_root);
+    return true;
+};
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::join(const key_type& _k, const key_type& _target) -> bool {
+    if (!contains(_k) || !contains(_target)) return false;
+    node_type* const _n = _nodes.at(_k);
+    header_type* const _root = _M_final_header_const(_n);
+    header_type* const _h = _n->unhook();
+    _M_remove_empty_headers(_h);
+    _M_update_headers(_root);
+    header_type* const _new_root = _M_final_header(_nodes.at(_target));
+    _new_root->append_node(_n);
+    _M_update_headers(_new_root);
+    return true;
+};
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::del_except(const key_type& _k) -> bool {
+    if (!contains(_k)) return false;
+    node_type* const _n = _nodes.at(_k);
+    header_type* const _root = _M_final_header_const(_n);
+    _n->unhook();
+    // erase all nodes and the header
+    for (auto _i = _nodes.cbegin(); _i != _nodes.cend();) {
+        const key_type& _key = _i->first;
+        node_type* const _node = _i->second;
+        if (_key != _k && _M_final_header_const(_node) == _root) {
+            assert(_n != _node);
+            _i = _nodes.erase(_i);
+            this->_M_deallocate_node(_node);
+            continue;
+        }
+        ++_i;
+    }
+    _headers.erase(_root);
+    _M_deallocate_header_recursively(_root);
+    header_type* const _new_root = this->_M_allocate_header();
+    _new_root->append_node(_n);
+    _M_update_headers(_new_root);
+    return true;
+}
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y) -> bool {
     if (!contains(_x) || !contains(_y)) return false;
@@ -223,7 +315,7 @@ disjoint_set<_Key, _Hash, _Alloc>::clear() -> void {
 
 /// protected implementation
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_assign(const self& _rhs) -> void { // todo
+disjoint_set<_Key, _Hash, _Alloc>::_M_assign(const self& _rhs) -> void {
     std::vector<key_type> _delegate_keys;
     auto index_of_key = [&](const key_type& _k) -> size_t {
         for (size_t _i = 0; _i != _delegate_keys.size(); ++_i) {
@@ -237,6 +329,9 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_assign(const self& _rhs) -> void { // todo
             if (_idx == _delegate_keys.size()) return this->_M_allocate_header();
             else return _M_final_header_const(this->_nodes.at(_delegate_keys.at(_idx)));
         } (index_of_key(_k));
+        if (_root->size() == 0) {
+            _delegate_keys.push_back(_k);
+        }
         node_type* const _n = this->_M_allocate_node();
         _root->append_node(_n);
         _nodes[_k] = _n;
@@ -279,6 +374,13 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_remove_empty_headers(header_type* _h) cons
         this->_M_deallocate_header(_h);
         _h = _next;
     }
+};
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::_M_deallocate_header_recursively(header_type* const _h) const -> void {
+    _h->forward_headers([this](header_type* _i) {
+        this->_M_deallocate_header_recursively(_i);
+    });
+    this->_M_deallocate_header(_h);
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::_M_deallocate_header_and_node_recursively(header_type* const _h) const -> void {

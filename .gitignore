@@ -10,8 +10,14 @@
 !/include
 !/include/*
 
+!/cmake
+!/cmake/*
+
 !/doc
 !/doc/*
 
 !/example
 !/example/*
+
+!/test
+!/test/*
