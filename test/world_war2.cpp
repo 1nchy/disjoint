@@ -67,6 +67,7 @@ int main(void) {
     EXPECT_FALSE(_world.sibling("ita", "ger"));
     /// 1945
     EXPECT_TRUE(_world.del("tan"));
+    EXPECT_TRUE(_world.join("fra", "eng"));
     EXPECT_TRUE(_world.join("rom", "sov"));
     EXPECT_TRUE(_world.join("hun", "sov"));
     EXPECT_TRUE(_world.join("bul", "sov"));
@@ -119,11 +120,12 @@ int main(void) {
     EXPECT_EQ(_world_tno.sibling("sov"), 0);
     EXPECT_EQ(_world_tno.sibling("raj"), 1);
     EXPECT_NQ(_world, _world_tno);
-    /// otl -> tno
+    /// otl -> tno, in dream
     /**
      * del ["hol", "bel", "lux", "saf", "cze", "pol", "sov", "prc"]
      * add ["man", "xsm", "sik", "gxc", "shx"]
      */
+    icy::disjoint_set<std::string> _world_backup = _world;
     EXPECT_TRUE(_world.join("usa"));
     EXPECT_TRUE(_world.join("eng"));
     EXPECT_TRUE(_world.join("fra", "eng"));
@@ -156,5 +158,17 @@ int main(void) {
     EXPECT_EQ(_world.size(), _world_tno.size());
     EXPECT_EQ(_world.classification(), _world_tno.classification());
     EXPECT_EQ(_world, _world_tno);
+    /// nuclear !!!
+    _world = _world_backup;
+    _world_tno.clear();
+
+    EXPECT_NQ(_world, _world_tno);
+
+    EXPECT_TRUE(_world_tno.add("anarchy"));
+
+    EXPECT_EQ(_world_tno.size(), 1);
+    EXPECT_TRUE(_world.contains("prc"));
+    EXPECT_EQ(_world.size(), 26);
+    EXPECT_EQ(_world.classification(), 7);
     return 0;
 }
