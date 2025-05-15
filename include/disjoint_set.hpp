@@ -9,7 +9,6 @@
 namespace icy {
 
 template <typename _Key, typename _Hash = std::hash<_Key>, typename _Alloc = std::allocator<_Key>> struct disjoint_set;
-template <typename _Value, typename _Alloc> struct disjoint_set_alloc;
 
 /**
  * @brief disjoint set, a container for managing the set to which elements belongs
@@ -38,7 +37,9 @@ public:
     disjoint_set(const self& _rhs);
     self& operator=(const self& _rhs);
     virtual ~disjoint_set();
-
+public:
+    bool operator==(const self& _rhs) const;
+public:
     /**
      * @brief return whether the specific key in disjoint set
      * @param _k the specific key
@@ -122,8 +123,6 @@ public:
     unsigned check() const;
 
 private:
-    header_type* _M_delegate(const key_type& _k) const;
-    header_type* _M_delegate(node_type* const _n) const;
     void _M_assign(const self& _rhs);
     /**
      * @brief update headers information
@@ -174,16 +173,43 @@ disjoint_set<_Key, _Hash, _Alloc>::~disjoint_set() {
     clear();
 };
 
+/**
+ * @implements T <= o(size) * o(classification), S = o(classification)
+ * prove that `*this` \subseteq `_rhs` and `|*this|` \eq `|_rhs|`
+ */
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(const key_type& _k) const -> header_type* {
-    if (!contains(_k)) return nullptr;
-    return _M_final_header(_nodes.at(_k));
+disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
+    if (size() != _rhs.size() || classification() != _rhs.classification()) {
+        return false;
+    }
+    std::vector<key_type> _delegate_keys; // for `_rhs`
+    auto index_of_key = [this, &_delegate_keys](const key_type& _k) -> size_t {
+        for (size_t _i = 0; _i != _delegate_keys.size(); ++_i) {
+            if (this->sibling(_k, _delegate_keys[_i])) return _i;
+        }
+        return _delegate_keys.size();
+    };
+    for (const auto& _i : _nodes) {
+        const key_type& _k = _i.first;
+        node_type* const _n = _i.second;
+        if (!_rhs.contains(_k)) {
+            return false;
+        }
+        const size_t _index = index_of_key(_k);
+        if (_index == _delegate_keys.size()) {
+            if (_M_final_header(_n)->size() != 1) {
+                _delegate_keys.push_back(_k);
+            }
+            continue;
+        }
+        const key_type& _dk = _delegate_keys[_index];
+        if (!_rhs.sibling(_k, _dk)) {
+            return false;
+        }
+    }
+    return true;
 };
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_delegate(node_type* const _n) const -> header_type* {
-    if (_n == nullptr) return nullptr;
-    return _M_final_header(_n);
-};
+
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _x, const key_type& _y) const -> bool {
     if (!contains(_x) || !contains(_y)) return false;

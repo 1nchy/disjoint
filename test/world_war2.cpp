@@ -56,6 +56,7 @@ int main(void) {
     icy::disjoint_set<std::string> _world_tno = _world;
     /// 1943 tno
     EXPECT_TRUE(_world_tno.join("mon", "jap"));
+    EXPECT_TRUE(_world_tno.del("men"));
     EXPECT_TRUE(_world_tno.del_all("sov"));
 
     EXPECT_EQ(_world_tno.classification(), 4);
@@ -77,7 +78,11 @@ int main(void) {
     EXPECT_TRUE(_world.add("cze", "sov"));
     EXPECT_TRUE(_world.join("ita", "usa"));
     EXPECT_TRUE(_world.join("yog"));
-
+    /**
+     * {"chi"}, {"prc"}, {"yog"}, {"jap"}, {"ger"}
+     * {"eng", "can", "raj", "ast", "nzl", "saf", "fra", "hol", "bel", "lux", "gre", "usa", "phi", "ita"}
+     * {"sov", "mon", "rom", "hun", "bul", "cze", "pol"}
+     */
     EXPECT_TRUE(_world.sibling("pol", "mon"));
     EXPECT_FALSE(_world.contains("xsm"));
     EXPECT_EQ(_world.size(), 26);
@@ -101,8 +106,51 @@ int main(void) {
     EXPECT_TRUE(_world_tno.del("prc"));
     EXPECT_TRUE(_world_tno.join("xsm"));
     EXPECT_TRUE(_world_tno.join("sik"));
-
-    EXPECT_EQ(_world_tno.size(), 24);
+    /**
+     * {"xsm"}, {"sik"}, {"raj"}
+     * {"chi, "gxc", "shx", "jap", "man", "mon", "phi"}
+     * {"usa", "can", "ast", "nzl"}
+     * {"ger", "ita", "eng", "fra", "gre", "yog", "hun", "rom", "bul"}
+     */
+    EXPECT_EQ(_world_tno.size(), 23);
     EXPECT_EQ(_world_tno.classification(), 6);
+    EXPECT_NQ(_world, _world_tno);
+    /// otl -> tno
+    /**
+     * del ["hol", "bel", "lux", "saf", "cze", "pol", "sov", "prc"]
+     * add ["man", "xsm", "sik", "gxc", "shx"]
+     */
+    EXPECT_TRUE(_world.join("usa"));
+    EXPECT_TRUE(_world.join("eng"));
+    EXPECT_TRUE(_world.join("fra", "eng"));
+    EXPECT_TRUE(_world.merge("eng", "ger"));
+    EXPECT_TRUE(_world.join("can", "usa"));
+    EXPECT_TRUE(_world.join("raj"));
+    EXPECT_TRUE(_world.join("ast"));
+    EXPECT_TRUE(_world.join("nzl", "ast"));
+    EXPECT_TRUE(_world.merge("nzl", "can"));
+    EXPECT_TRUE(_world.join("ita"));
+    EXPECT_TRUE(_world.join("gre", "ita"));
+    EXPECT_TRUE(_world.merge("gre", "fra"));
+    EXPECT_TRUE(_world.del_except("phi"));
+    EXPECT_TRUE(_world.join("phi", "jap"));
+    EXPECT_TRUE(_world.join("mon", "jap"));
+    EXPECT_TRUE(_world.join("rom"));
+    EXPECT_TRUE(_world.join("hun", "rom"));
+    EXPECT_TRUE(_world.join("bul", "rom"));
+    EXPECT_TRUE(_world.merge("ger", "rom"));
+    EXPECT_TRUE(_world.del_all("sov"));
+    EXPECT_TRUE(_world.join("yog", "ita"));
+    EXPECT_TRUE(_world.add("gxc", "chi"));
+    EXPECT_TRUE(_world.add("shx", "chi"));
+    EXPECT_TRUE(_world.merge("jap", "chi"));
+    EXPECT_TRUE(_world.add("man", "jap"));
+    EXPECT_TRUE(_world.add("xsm"));
+    EXPECT_TRUE(_world.add("sik"));
+    EXPECT_TRUE(_world.del("prc"));
+
+    EXPECT_EQ(_world.size(), _world_tno.size());
+    EXPECT_EQ(_world.classification(), _world_tno.classification());
+    EXPECT_EQ(_world, _world_tno);
     return 0;
 }
