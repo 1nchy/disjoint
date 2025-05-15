@@ -54,6 +54,11 @@ public:
      */
     size_t size() const { return _nodes.size(); }
     /**
+     * @brief return the number of elements in the classification
+     * @param _k the key
+     */
+    size_t sibling(const key_type& _k) const;
+    /**
      * @brief return whether the given 2 keys in the one classification
      * @param _x the given key
      * @param _y the given key
@@ -195,6 +200,9 @@ disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
         if (!_rhs.contains(_k)) {
             return false;
         }
+        if (_rhs.sibling(_k) != sibling(_k)) {
+            return false;
+        }
         const size_t _index = index_of_key(_k);
         if (_index == _delegate_keys.size()) {
             if (_M_final_header(_n)->size() != 1) {
@@ -210,6 +218,11 @@ disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
     return true;
 };
 
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _k) const -> size_t {
+    if (!contains(_k)) return 0;
+    return _M_final_header(_nodes.at(_k))->size();
+}
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _x, const key_type& _y) const -> bool {
     if (!contains(_x) || !contains(_y)) return false;

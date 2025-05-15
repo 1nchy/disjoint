@@ -46,6 +46,7 @@ int main(void) {
     EXPECT_TRUE(_world.sibling("phi", "lux"));
     EXPECT_EQ(_world.size(), 32);
     EXPECT_EQ(_world.classification(), 5);
+    EXPECT_EQ(_world.sibling("usa"), 15);
     /**
      * {"chi", "prc", "shx", "xsm", "gxc", "sik"},
      * {"jap", "man", "men"},
@@ -87,6 +88,7 @@ int main(void) {
     EXPECT_FALSE(_world.contains("xsm"));
     EXPECT_EQ(_world.size(), 26);
     EXPECT_EQ(_world.classification(), 7);
+    EXPECT_EQ(_world.sibling("sov"), 7);
     /// 1945 tno
     EXPECT_TRUE(_world_tno.join("usa"));
     EXPECT_TRUE(_world_tno.join("can", "usa"));
@@ -114,6 +116,8 @@ int main(void) {
      */
     EXPECT_EQ(_world_tno.size(), 23);
     EXPECT_EQ(_world_tno.classification(), 6);
+    EXPECT_EQ(_world_tno.sibling("sov"), 0);
+    EXPECT_EQ(_world_tno.sibling("raj"), 1);
     EXPECT_NQ(_world, _world_tno);
     /// otl -> tno
     /**
