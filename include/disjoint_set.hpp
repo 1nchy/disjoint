@@ -39,6 +39,7 @@ public:
     virtual ~disjoint_set();
 public:
     bool operator==(const self& _rhs) const;
+    bool operator!=(const self& _rhs) const;
 public:
     /**
      * @brief return whether the specific key in disjoint set
@@ -217,6 +218,10 @@ disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
     }
     return true;
 };
+template <typename _Key, typename _Hash, typename _Alloc> auto
+disjoint_set<_Key, _Hash, _Alloc>::operator!=(const self& _rhs) const -> bool {
+    return !operator==(_rhs);
+}
 
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _k) const -> size_t {
@@ -443,19 +448,25 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_deallocate_header_recursively(header_type*
  *   4 : count from _final_headers \eq _nodes
  *   100+ : error in header inside
 */
+namespace {
+static constexpr inline const char* fatal_empty_header = "\\exists(_final_headers)?.empty()";
+static constexpr inline const char* fatal_empty_node = "\\exists(_nodes) == nullptr";
+static constexpr inline const char* fatal_node_in_header = "\\exists(_nodes) not in \\any(_final_headers)";
+static constexpr inline const char* fatal_node_count = "_nodes.size() != \\sum(\\all(_final_headers).size())";
+}
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::check() const -> unsigned {
     size_t _count_from_headers = 0ul;
     for (auto* _i : _final_headers) {
-        if (_i == nullptr || _i->size() == 0) return 1;
-        if (const auto _ic = _i->check()) return 100 + _ic;
+        if (_i == nullptr || _i->size() == 0) throw std::logic_error(fatal_empty_header);
+        _i->check();
         _count_from_headers += _i->size();
     }
-    if (_count_from_headers != _nodes.size()) return 4;
+    if (_count_from_headers != _nodes.size()) throw std::logic_error(fatal_node_count);
     for (auto _i = _nodes.cbegin(); _i != _nodes.cend(); ++_i) {
-        if (_i->second == nullptr) return 2;
+        if (_i->second == nullptr) throw std::logic_error(fatal_empty_node);
         auto* const _h = _M_final_header_const(_i->second);
-        if (!_final_headers.contains(_h)) return 3;
+        if (!_final_headers.contains(_h)) throw std::logic_error(fatal_node_in_header);
     }
     return 0;
 };

@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <stdexcept>
 
 namespace icy {
 
@@ -99,7 +100,7 @@ public:
      * @tparam _Handler [](node_type*){}
      */
     template <typename _Handler> void backward_nodes(const _Handler& _hdr);
-    unsigned check() const;
+    void check() const;
 private:
     self* _header = nullptr;
     self* _left = nullptr;
@@ -193,39 +194,36 @@ template <typename _Tp> template <typename _Handler> auto header<_Tp>::backward_
     }
 }
 
-/**
- * @brief check header
- * @returns
- *  0 : normal
- *  1 : error in _first_node or _last_node
- *  2 : error in node link
- *  3 : error in node::_header
- *  6 : error in _first or _last
- *  7 : error in header link
- *  8 : error in header::_header
- * 11 : error in _node_count
- */
-template <typename _Tp> auto header<_Tp>::check() const -> unsigned {
+namespace {
+static constexpr inline const char* fatal_node_range = "_first_node ^ _last_node";
+static constexpr inline const char* fatal_node_link = "invalid list<node>";
+static constexpr inline const char* fatal_node_header = "\\exists(list<node>)._header != this";
+static constexpr inline const char* fatal_header_range = "_first ^ _last";
+static constexpr inline const char* fatal_header_link = "invalid list<header>";
+static constexpr inline const char* fatal_header_header = "\\exists(list<header>)._header != this";
+static constexpr inline const char* fatal_node_count = "\\sum(\\all(list<header>).size()) != size()";
+}
+template <typename _Tp> auto header<_Tp>::check() const -> void {
     size_t _count = 0ul;
     // check node
-    if (_first_node == nullptr ^ _last_node == nullptr) return 1u;
+    if (_first_node == nullptr ^ _last_node == nullptr) throw std::logic_error(fatal_node_range);
     node_type* _prev_node = nullptr;
     for (auto* _i = _first_node; _i != nullptr; _prev_node = _i, _i = _i->_right) {
-        if (_i->_left != _prev_node) return 2u;
-        if (_i->_header != this) return 3u;
+        if (_i->_left != _prev_node) throw std::logic_error(fatal_node_link);
+        if (_i->_header != this) throw std::logic_error(fatal_node_header);
         ++_count;
     }
     // check sub-header
-    if (_first == nullptr ^ _last == nullptr) return 6u;
+    if (_first == nullptr ^ _last == nullptr) throw std::logic_error(fatal_header_range);
     self* _prev_header = nullptr;
     for (auto* _i = _first; _i != nullptr; _prev_header = _i, _i = _i->_right) {
-        if (_i->_left != _prev_header) return 7u;
-        if (_i->_header != this) return 8u;
-        if (const auto _ic = _i->check()) return _ic;
+        if (_i->_left != _prev_header) throw std::logic_error(fatal_header_link);
+        if (_i->_header != this) throw std::logic_error(fatal_header_header);
+        _i->check();
         _count += _i->_node_count;
     }
-    if (_count != _node_count) return 11u;
-    return 0u;
+    if (_count != _node_count) throw std::logic_error(fatal_node_count);
+    return;
 };
 
 template <typename _Tp, typename _Alloc> struct alloc : public _Alloc {
