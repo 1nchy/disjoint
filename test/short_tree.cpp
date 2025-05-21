@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-#include "short_tree.hpp"
+#include "disjoint_base.hpp"
 
 template <typename _Tp> using alloc = icy::short_tree::alloc<_Tp, std::allocator<_Tp>>;
 template <typename _Tp> using node = typename alloc<_Tp>::node_type;

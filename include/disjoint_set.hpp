@@ -1,7 +1,7 @@
 #ifndef _ICY_DISJOINT_SET_HPP_
 #define _ICY_DISJOINT_SET_HPP_
 
-#include "short_tree.hpp"
+#include "disjoint_base.hpp"
 #include <cassert>
 #include <unordered_map>
 #include <unordered_set>
@@ -35,121 +35,121 @@ public:
     disjoint_set() = default;
     disjoint_set(std::initializer_list<std::initializer_list<key_type>>);
     disjoint_set(const self& _rhs);
-    self& operator=(const self& _rhs);
+    auto operator=(const self& _rhs) -> self&;
     virtual ~disjoint_set();
 public:
-    bool operator==(const self& _rhs) const;
-    bool operator!=(const self& _rhs) const;
+    auto operator==(const self& _rhs) const -> bool;
+    auto operator!=(const self& _rhs) const -> bool;
 public:
     /**
      * @brief return whether the specific key in disjoint set
      * @param _k the specific key
      */
-    bool contains(const key_type& _k) const { return _nodes.count(_k) != 0; }
+    auto contains(const key_type& _k) const -> bool { return _nodes.count(_k) != 0; }
     /**
      * @brief return the number of elements classification
      */
-    size_t classification() const { return _final_headers.size(); }
+    auto classification() const -> size_t { return _final_headers.size(); }
     /**
      * @brief return the number of elements
      */
-    size_t size() const { return _nodes.size(); }
+    auto size() const -> size_t { return _nodes.size(); }
     /**
      * @brief return the number of elements in the classification
      * @param _k the key
      */
-    size_t sibling(const key_type& _k) const;
+    auto sibling(const key_type& _k) const -> size_t;
     /**
      * @brief return whether the given 2 keys in the one classification
      * @param _x the given key
      * @param _y the given key
      */
-    bool sibling(const key_type& _x, const key_type& _y) const;
+    auto sibling(const key_type& _x, const key_type& _y) const -> bool;
     /**
      * @brief add the specific key to a new classification
      * @param _k the specific key
      * @return return false when the key is already in disjoint set or the key fails to be added
      */
-    bool add(const key_type& _k);
+    auto add(const key_type& _k) -> bool;
     /**
      * @brief add the specific key to the classification, which contains the given key
      * @param _k the specific key
      * @param _target the given key
      * @return return false when the @c _target is not in disjoint set or the key fails to be added
      */
-    bool add(const key_type& _k, const key_type& _target);
+    auto add(const key_type& _k, const key_type& _target) -> bool;
     /**
      * @brief delete the specific key
      * @param _k the specific key
      * @return return false when the key is not in disjoint set or the key fails to be deleted
      */
-    bool del(const key_type& _k);
+    auto del(const key_type& _k) -> bool;
     /**
      * @brief delete all elements in the same classification as the specific key
      * @param _k the specific key
      * @return return false when the key is not in disjoint set or the key fails to be deleted
      */
-    bool del_all(const key_type& _k);
+    auto del_all(const key_type& _k) -> bool;
     /**
      * @brief delete all elements in the classification, except the specific key
      * @param _k the specific key
      * @return return false when the key is not in disjoint set or the elements fail to be deleted
      */
-    bool del_except(const key_type& _k);
+    auto del_except(const key_type& _k) -> bool;
     /**
      * @brief make the specific key join a new classification
      * @param _k the specific key
      * @return return false when the key is not in disjoint set or the key fails to be deleted
      */
-    bool join(const key_type& _k);
+    auto join(const key_type& _k) -> bool;
     /**
      * @brief make the specific key join the classification, which contains the given key
      * @param _k the specific key
      * @param _target the given key
      * @return return false when the keys are not in disjoint set or the key fails to be deleted
      */
-    bool join(const key_type& _k, const key_type& _target);
+    auto join(const key_type& _k, const key_type& _target) -> bool;
     /**
      * @brief merge 2 classifications, which contains the given 2 keys respectively
      * @param _x the given key
      * @param _y the given key
      * @return return false when the keys are not in disjoint set or the classifications fail to be merged
      */
-    bool merge(const key_type& _x, const key_type& _y);
+    auto merge(const key_type& _x, const key_type& _y) -> bool;
     /**
      * @brief return whether no element in the disjoint set
      */
-    bool empty() const { return _nodes.empty(); }
+    auto empty() const -> bool { return _nodes.empty(); }
     /**
      * @brief clear all keys and classifications
      */
-    void clear();
+    auto clear() -> void;
 
 // check function
-    unsigned check() const;
+    auto check() const -> void;
 
 private:
-    void _M_assign(const self& _rhs);
+    auto _M_assign(const self& _rhs) -> void;
     /**
      * @brief update final headers information
      * @param _h a final header
     */
-    void _M_update_final_headers(header_type* const _h);
+    auto _M_update_final_headers(header_type* const _h) -> void;
     /**
      * @brief return the root header
      * @details compress _n
      */
-    header_type* _M_final_header(node_type* const _n) const;
+    auto _M_final_header(node_type* const _n) const -> header_type*;
     /**
      * @brief return the root header
      * @details not compress _n
      */
-    header_type* _M_final_header_const(node_type* const _n) const;
+    auto _M_final_header_const(node_type* const _n) const -> header_type*;
     /**
      * @brief remove empty headers from bottom to top, remain the final header
      */
-    void _M_remove_empty_headers_from_bottom_to_top(header_type* _h) const;
-    void _M_deallocate_header_recursively(header_type* const _h) const;
+    auto _M_remove_empty_headers_from_bottom_to_top(header_type* _h) const -> void;
+    auto _M_deallocate_header_recursively(header_type* const _h) const -> void;
 };
 
 template <typename _Key, typename _Hash, typename _Alloc>
@@ -439,15 +439,6 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_deallocate_header_recursively(header_type*
 };
 
 /// check implementation
-/**
- * @brief check the uf_table
- * @returns 0 : normal
- *   1 : null header pointer or empty header in %_final_headers
- *   2 : null node in %_nodes
- *   3 : node not in any header
- *   4 : count from _final_headers \eq _nodes
- *   100+ : error in header inside
-*/
 namespace {
 static constexpr inline const char* fatal_empty_header = "\\exists(_final_headers)?.empty()";
 static constexpr inline const char* fatal_empty_node = "\\exists(_nodes) == nullptr";
@@ -455,7 +446,7 @@ static constexpr inline const char* fatal_node_in_header = "\\exists(_nodes) not
 static constexpr inline const char* fatal_node_count = "_nodes.size() != \\sum(\\all(_final_headers).size())";
 }
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::check() const -> unsigned {
+disjoint_set<_Key, _Hash, _Alloc>::check() const -> void {
     size_t _count_from_headers = 0ul;
     for (auto* _i : _final_headers) {
         if (_i == nullptr || _i->size() == 0) throw std::logic_error(fatal_empty_header);
@@ -468,7 +459,7 @@ disjoint_set<_Key, _Hash, _Alloc>::check() const -> unsigned {
         auto* const _h = _M_final_header_const(_i->second);
         if (!_final_headers.contains(_h)) throw std::logic_error(fatal_node_in_header);
     }
-    return 0;
+    return;
 };
 
 };
