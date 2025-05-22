@@ -18,53 +18,22 @@ template <typename _Key, typename _Hash = std::hash<_Key>, typename _Alloc = std
  * @implements implemented by hash table and short tree
 */
 template <typename _Key, typename _Hash, typename _Alloc>
-struct disjoint_set : public short_tree::alloc<void, _Alloc> {
-    typedef short_tree::alloc<void, _Alloc> base;
-    typedef disjoint_set<_Key, _Hash, _Alloc> self;
+struct disjoint_set : public disjoint_base<_Key, void, _Hash, _Alloc> {
+    using base = disjoint_base<_Key, void, _Hash, _Alloc>;
+    using self = disjoint_set<_Key, _Hash, _Alloc>;
     using node_type = typename base::node_type;
     using header_type = typename base::header_type;
-
-    typedef _Key key_type;
-
-    // <key_type, node_type*>
-    std::unordered_map<key_type, node_type*> _nodes;
-    // <header*>
-    std::unordered_set<header_type*> _final_headers;
-
+    using key_type = typename base::key_type;
 public:
     disjoint_set() = default;
     disjoint_set(std::initializer_list<std::initializer_list<key_type>>);
     disjoint_set(const self& _rhs);
     auto operator=(const self& _rhs) -> self&;
-    virtual ~disjoint_set();
+    virtual ~disjoint_set() = default;
 public:
     auto operator==(const self& _rhs) const -> bool;
     auto operator!=(const self& _rhs) const -> bool;
 public:
-    /**
-     * @brief return whether the specific key in disjoint set
-     * @param _k the specific key
-     */
-    auto contains(const key_type& _k) const -> bool { return _nodes.count(_k) != 0; }
-    /**
-     * @brief return the number of elements classification
-     */
-    auto classification() const -> size_t { return _final_headers.size(); }
-    /**
-     * @brief return the number of elements
-     */
-    auto size() const -> size_t { return _nodes.size(); }
-    /**
-     * @brief return the number of elements in the classification
-     * @param _k the key
-     */
-    auto sibling(const key_type& _k) const -> size_t;
-    /**
-     * @brief return whether the given 2 keys in the one classification
-     * @param _x the given key
-     * @param _y the given key
-     */
-    auto sibling(const key_type& _x, const key_type& _y) const -> bool;
     /**
      * @brief add the specific key to a new classification
      * @param _k the specific key
@@ -78,78 +47,8 @@ public:
      * @return return false when the @c _target is not in disjoint set or the key fails to be added
      */
     auto add(const key_type& _k, const key_type& _target) -> bool;
-    /**
-     * @brief delete the specific key
-     * @param _k the specific key
-     * @return return false when the key is not in disjoint set or the key fails to be deleted
-     */
-    auto del(const key_type& _k) -> bool;
-    /**
-     * @brief delete all elements in the same classification as the specific key
-     * @param _k the specific key
-     * @return return false when the key is not in disjoint set or the key fails to be deleted
-     */
-    auto del_all(const key_type& _k) -> bool;
-    /**
-     * @brief delete all elements in the classification, except the specific key
-     * @param _k the specific key
-     * @return return false when the key is not in disjoint set or the elements fail to be deleted
-     */
-    auto del_except(const key_type& _k) -> bool;
-    /**
-     * @brief make the specific key join a new classification
-     * @param _k the specific key
-     * @return return false when the key is not in disjoint set or the key fails to be deleted
-     */
-    auto join(const key_type& _k) -> bool;
-    /**
-     * @brief make the specific key join the classification, which contains the given key
-     * @param _k the specific key
-     * @param _target the given key
-     * @return return false when the keys are not in disjoint set or the key fails to be deleted
-     */
-    auto join(const key_type& _k, const key_type& _target) -> bool;
-    /**
-     * @brief merge 2 classifications, which contains the given 2 keys respectively
-     * @param _x the given key
-     * @param _y the given key
-     * @return return false when the keys are not in disjoint set or the classifications fail to be merged
-     */
-    auto merge(const key_type& _x, const key_type& _y) -> bool;
-    /**
-     * @brief return whether no element in the disjoint set
-     */
-    auto empty() const -> bool { return _nodes.empty(); }
-    /**
-     * @brief clear all keys and classifications
-     */
-    auto clear() -> void;
-
-// check function
-    auto check() const -> void;
-
 private:
     auto _M_assign(const self& _rhs) -> void;
-    /**
-     * @brief update final headers information
-     * @param _h a final header
-    */
-    auto _M_update_final_headers(header_type* const _h) -> void;
-    /**
-     * @brief return the root header
-     * @details compress _n
-     */
-    auto _M_final_header(node_type* const _n) const -> header_type*;
-    /**
-     * @brief return the root header
-     * @details not compress _n
-     */
-    auto _M_final_header_const(node_type* const _n) const -> header_type*;
-    /**
-     * @brief remove empty headers from bottom to top, remain the final header
-     */
-    auto _M_remove_empty_headers_from_bottom_to_top(header_type* _h) const -> void;
-    auto _M_deallocate_header_recursively(header_type* const _h) const -> void;
 };
 
 template <typename _Key, typename _Hash, typename _Alloc>
@@ -164,19 +63,14 @@ disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(std::initializer_list<std::initi
     }
 };
 template <typename _Key, typename _Hash, typename _Alloc>
-disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(const self& _rhs) {
+disjoint_set<_Key, _Hash, _Alloc>::disjoint_set(const self& _rhs) : base(_rhs) {
     _M_assign(_rhs);
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::operator=(const self& _rhs) -> self& {
     if (&_rhs == this) return *this;
-    clear();
-    _M_assign(_rhs);
+    this->clear(); _M_assign(_rhs);
     return *this;
-};
-template <typename _Key, typename _Hash, typename _Alloc>
-disjoint_set<_Key, _Hash, _Alloc>::~disjoint_set() {
-    clear();
 };
 
 /**
@@ -185,7 +79,7 @@ disjoint_set<_Key, _Hash, _Alloc>::~disjoint_set() {
  */
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
-    if (size() != _rhs.size() || classification() != _rhs.classification()) {
+    if (this->size() != _rhs.size() || this->classification() != _rhs.classification()) {
         return false;
     }
     std::vector<key_type> _delegate_keys; // for `_rhs`
@@ -195,18 +89,18 @@ disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
         }
         return _delegate_keys.size();
     };
-    for (const auto& _i : _nodes) {
+    for (const auto& _i : this->_nodes) {
         const key_type& _k = _i.first;
         node_type* const _n = _i.second;
         if (!_rhs.contains(_k)) {
             return false;
         }
-        if (_rhs.sibling(_k) != sibling(_k)) {
+        if (_rhs.sibling(_k) != this->sibling(_k)) {
             return false;
         }
         const size_t _index = index_of_key(_k);
         if (_index == _delegate_keys.size()) {
-            if (_M_final_header(_n)->size() != 1) {
+            if (this->sibling(_k) != 1) {
                 _delegate_keys.push_back(_k);
             }
             continue;
@@ -220,149 +114,30 @@ disjoint_set<_Key, _Hash, _Alloc>::operator==(const self& _rhs) const -> bool {
 };
 template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::operator!=(const self& _rhs) const -> bool {
-    return !operator==(_rhs);
+    return !this->operator==(_rhs);
 }
 
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _k) const -> size_t {
-    if (!contains(_k)) return 0;
-    return _M_final_header(_nodes.at(_k))->size();
-}
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::sibling(const key_type& _x, const key_type& _y) const -> bool {
-    if (!contains(_x) || !contains(_y)) return false;
-    if (_x == _y) return true;
-    return _M_final_header(_nodes.at(_x)) == _M_final_header(_nodes.at(_y));
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
 disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k) -> bool {
-    if (contains(_k)) return false;
+    if (this->contains(_k)) return false;
     header_type* const _root = this->_M_allocate_header();
     node_type* const _n = this->_M_allocate_node();
     _root->append_node(_n);
-    _nodes[_k] = _n;
-    _M_update_final_headers(_root);
-    return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k, const key_type& _target) -> bool {
-    if (contains(_k) || !contains(_target)) return false;
-    header_type* const _root = _M_final_header(_nodes.at(_target));
-    node_type* const _n = this->_M_allocate_node();
-    _root->append_node(_n);
-    _nodes[_k] = _n;
-    _M_update_final_headers(_root);
-    return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::del(const key_type& _k) -> bool {
-    if (!contains(_k)) return false;
-    node_type* const _n = _nodes.at(_k);
-    header_type* const _root = _M_final_header_const(_n);
-    header_type* const _h = _n->unhook();
-    _M_remove_empty_headers_from_bottom_to_top(_h);
-    this->_M_deallocate_node(_n);
-    _nodes.erase(_k);
-    _M_update_final_headers(_root);
-    return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::del_all(const key_type& _k) -> bool {
-    if (!contains(_k)) return false;
-    node_type* const _n = _nodes.at(_k);
-    header_type* const _root = _M_final_header_const(_n);
-    // erase all nodes and the header
-    for (auto _i = _nodes.cbegin(); _i != _nodes.cend();) {
-        node_type* const _node = _i->second;
-        if (_M_final_header_const(_node) == _root) {
-            _i = _nodes.erase(_i);
-            this->_M_deallocate_node(_node);
-            continue;
-        }
-        ++_i;
-    }
-    // all elements have been removed, and the information in `_root` is still retained, so remove it directly
-    _final_headers.erase(_root);
-    _M_deallocate_header_recursively(_root);
-    return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::del_except(const key_type& _k) -> bool {
-    if (!contains(_k)) return false;
-    node_type* const _n = _nodes.at(_k);
-    header_type* const _root = _M_final_header_const(_n);
-    _n->unhook();
-    // erase all nodes and the header
-    for (auto _i = _nodes.cbegin(); _i != _nodes.cend();) {
-        const key_type& _key = _i->first;
-        node_type* const _node = _i->second;
-        if (_key != _k && _M_final_header_const(_node) == _root) {
-            assert(_n != _node);
-            _i = _nodes.erase(_i);
-            this->_M_deallocate_node(_node);
-            continue;
-        }
-        ++_i;
-    }
-    // all elements have been removed, and the information in `_root` is still retained, so remove it directly
-    _final_headers.erase(_root);
-    _M_deallocate_header_recursively(_root);
-    header_type* const _new_root = this->_M_allocate_header();
-    _new_root->append_node(_n);
-    _M_update_final_headers(_new_root);
+    this->_nodes[_k] = _n;
+    this->_M_update_final_headers(_root);
     return true;
 }
 template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::join(const key_type& _k) -> bool {
-    if (!contains(_k)) return false;
-    node_type* const _n = _nodes.at(_k);
-    header_type* const _root = _M_final_header_const(_n);
-    header_type* const _h = _n->unhook();
-    _M_remove_empty_headers_from_bottom_to_top(_h);
-    _M_update_final_headers(_root);
-    header_type* const _new_root = this->_M_allocate_header();
-    _new_root->append_node(_n);
-    _M_update_final_headers(_new_root);
+disjoint_set<_Key, _Hash, _Alloc>::add(const key_type& _k, const key_type& _target) -> bool {
+    if (this->contains(_k) || !this->contains(_target)) return false;
+    header_type* const _root = this->_M_final_header(this->_nodes.at(_target));
+    node_type* const _n = this->_M_allocate_node();
+    _root->append_node(_n);
+    this->_nodes[_k] = _n;
+    this->_M_update_final_headers(_root);
     return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::join(const key_type& _k, const key_type& _target) -> bool {
-    if (!contains(_k) || !contains(_target)) return false;
-    if (sibling(_k, _target)) {
-        return true;
-    }
-    node_type* const _n = _nodes.at(_k);
-    header_type* const _root = _M_final_header_const(_n);
-    header_type* const _h = _n->unhook();
-    _M_remove_empty_headers_from_bottom_to_top(_h);
-    _M_update_final_headers(_root);
-    header_type* const _new_root = _M_final_header(_nodes.at(_target));
-    _new_root->append_node(_n);
-    _M_update_final_headers(_new_root);
-    return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::merge(const key_type& _x, const key_type& _y) -> bool {
-    if (!contains(_x) || !contains(_y)) return false;
-    if (sibling(_x, _y)) return true;
-    header_type* const _xr = _M_final_header(_nodes.at(_x));
-    header_type* const _yr = _M_final_header(_nodes.at(_y));
-    _xr->append_header(_yr);
-    _M_update_final_headers(_xr);
-    _M_update_final_headers(_yr);
-    return true;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::clear() -> void {
-    for (const auto& [_k, _n] : _nodes) {
-        this->_M_deallocate_node(_n);
-    }
-    _nodes.clear();
-    for (header_type* _h : _final_headers) {
-        _M_deallocate_header_recursively(_h);
-    }
-    _final_headers.clear();
-};
+}
+
 
 /// protected implementation
 template <typename _Key, typename _Hash, typename _Alloc> auto
@@ -378,90 +153,18 @@ disjoint_set<_Key, _Hash, _Alloc>::_M_assign(const self& _rhs) -> void {
         const key_type& _k = _i.first;
         header_type* const _root = [this, &_delegate_keys](const size_t _idx) {
             if (_idx == _delegate_keys.size()) return this->_M_allocate_header();
-            else return _M_final_header_const(this->_nodes.at(_delegate_keys.at(_idx)));
+            else return this->_M_final_header_const(this->_nodes.at(_delegate_keys.at(_idx)));
         } (index_of_key(_k));
         if (_root->size() == 0) {
             _delegate_keys.push_back(_k);
         }
         node_type* const _n = this->_M_allocate_node();
         _root->append_node(_n);
-        _nodes[_k] = _n;
-        _M_update_final_headers(_root);
+        this->_nodes[_k] = _n;
+        this->_M_update_final_headers(_root);
     }
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_update_final_headers(header_type* const _h) -> void {
-    if (_h->get() == nullptr) {
-        if (_h->size() == 0) {
-            assert(_final_headers.contains(_h));
-            _final_headers.erase(_h);
-            this->_M_deallocate_header(_h);
-        }
-        else if (!_final_headers.contains(_h)) {
-            _final_headers.insert(_h);
-        }
-    }
-    else { // not a final header, remove it
-        _final_headers.erase(_h);
-    }
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_final_header(node_type* const _n) const -> header_type* {
-    header_type* _fh = _n->get();
-    for (; _fh->get() != nullptr; _fh = _fh->get());
-    if (_fh != _n->get()) {
-        header_type* _h = _n->unhook();
-        _fh->append_node(_n);
-        _M_remove_empty_headers_from_bottom_to_top(_h);
-    }
-    return _fh;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_final_header_const(node_type* const _n) const -> header_type* {
-    header_type* _fh = _n->get();
-    for (; _fh->get() != nullptr; _fh = _fh->get());
-    return _fh;
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_remove_empty_headers_from_bottom_to_top(header_type* _h) const -> void {
-    while (_h->get() != nullptr && _h->size() == 0) {
-        header_type* _next = _h->unhook();
-        this->_M_deallocate_header(_h);
-        _h = _next;
-    }
-};
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::_M_deallocate_header_recursively(header_type* const _h) const -> void {
-    _h->forward_headers([this](header_type* _i) {
-        this->_M_deallocate_header_recursively(_i);
-    });
-    this->_M_deallocate_header(_h);
-};
-
-/// check implementation
-namespace {
-static constexpr inline const char* fatal_empty_header = "\\exists(_final_headers)?.empty()";
-static constexpr inline const char* fatal_empty_node = "\\exists(_nodes) == nullptr";
-static constexpr inline const char* fatal_node_in_header = "\\exists(_nodes) not in \\any(_final_headers)";
-static constexpr inline const char* fatal_node_count = "_nodes.size() != \\sum(\\all(_final_headers).size())";
 }
-template <typename _Key, typename _Hash, typename _Alloc> auto
-disjoint_set<_Key, _Hash, _Alloc>::check() const -> void {
-    size_t _count_from_headers = 0ul;
-    for (auto* _i : _final_headers) {
-        if (_i == nullptr || _i->size() == 0) throw std::logic_error(fatal_empty_header);
-        _i->check();
-        _count_from_headers += _i->size();
-    }
-    if (_count_from_headers != _nodes.size()) throw std::logic_error(fatal_node_count);
-    for (auto _i = _nodes.cbegin(); _i != _nodes.cend(); ++_i) {
-        if (_i->second == nullptr) throw std::logic_error(fatal_empty_node);
-        auto* const _h = _M_final_header_const(_i->second);
-        if (!_final_headers.contains(_h)) throw std::logic_error(fatal_node_in_header);
-    }
-    return;
-};
 
-};
+}
 
 #endif // _ICY_DISJOINT_SET_HPP_
