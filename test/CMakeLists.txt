@@ -21,3 +21,4 @@ endmacro(icy_add_test)
 
 icy_add_test(short_tree)
 icy_add_test(world_war2)
+icy_add_test(digit_classification)
