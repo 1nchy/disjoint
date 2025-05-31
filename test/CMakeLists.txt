@@ -19,6 +19,5 @@ macro(icy_add_test case_name)
     add_test(${case_name} ${case_exe})
 endmacro(icy_add_test)
 
-icy_add_test(short_tree)
 icy_add_test(world_war2)
 icy_add_test(digit_classification)

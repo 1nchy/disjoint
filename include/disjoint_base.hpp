@@ -1,5 +1,5 @@
-#ifndef _ICY_SHORT_TREE_HPP_
-#define _ICY_SHORT_TREE_HPP_
+#ifndef _ICY_DISJOINT_BASE_HPP_
+#define _ICY_DISJOINT_BASE_HPP_
 
 #include <cassert>
 #include <cstddef>
@@ -12,43 +12,46 @@
 
 namespace icy {
 
-namespace short_tree {
+namespace {
+template <typename _Tp> struct storage;
+template <typename _Tp> struct storage {
+public:
+    using value_type = _Tp;
+public:
+    template <typename... _Args> storage(_Args&&... _args) : _v(std::forward<_Args>(_args)...) {}
+    storage(const storage&) = default;
+    virtual ~storage() = default;
+public:
+    inline auto value() -> value_type& { return _v; }
+    inline auto value() const -> const value_type& { return _v; }
+    inline auto set_value(const value_type& _v) -> void { this->_v = _v; }
+private:
+    value_type _v;
+};
+template <> struct storage<void> {
+public:
+    using value_type = void;
+public:
+    storage() = default;
+    storage(const storage&) = default;
+    virtual ~storage() = default;
+};
+}
+
+namespace {
 
 template <typename _Tp, typename _Alloc> struct alloc;
 
 template <typename _Tp> struct node;
 template <typename _Tp> struct header;
 
-template <typename _Tp> struct node {
+template <typename _Tp> struct node : public storage<_Tp> {
     using self = node<_Tp>;
+    using base = storage<_Tp>;
     using value_type = _Tp;
     using header_type = header<_Tp>;
-    template <typename... _Args> node(_Args&&... _args): _v(std::forward<_Args>(_args)...) {}
-    node(const self& _rhs) : _v(_rhs._v) {}
-    self& operator=(const self&) = delete;
-    virtual ~node() = default;
-    template <typename _T> friend struct header;
-public:
-    const header_type* get() const { return _header; }
-    header_type* get() { return _header; }
-    header_type* unhook();
-private:
-    self* _left = nullptr;
-    self* _right = nullptr;
-    header_type* _header = nullptr;
-public:
-    value_type& value() { return _v; }
-    const value_type& value() const { return _v; }
-    void set_value(const value_type& _v) { this->_v = _v; }
-private:
-    value_type _v;
-};
-template <> struct node<void> {
-    using self = node<void>;
-    using value_type = void;
-    using header_type = header<void>;
-    node() = default;
-    node(const self&) {}
+    template <typename... _Args> node(_Args&&... _args): base(std::forward<_Args>(_args)...) {}
+    node(const self& _rhs) : base(_rhs) {}
     self& operator=(const self&) = delete;
     virtual ~node() = default;
     template <typename _T> friend struct header;
@@ -152,18 +155,6 @@ template <typename _Tp> auto header<_Tp>::append_header(self* _h) -> void {
         _i->_node_count += _h->_node_count;
     }
 };
-auto node<void>::unhook() -> header_type* {
-    if (_left != nullptr) _left->_right = _right;
-    else _header->_first_node = _right; // _header->_first == this
-    if (_right != nullptr) _right->_left = _left;
-    else _header->_last_node = _left; // _header->_last == this
-    for (auto* _i = _header; _i != nullptr; _i = _i->_header) {
-        --_i->_node_count;
-    }
-    header_type* _h = _header;
-    _left = nullptr; _right = nullptr; _header = nullptr;
-    return _h;
-}
 
 template <typename _Tp> template <typename _Handler> auto header<_Tp>::forward_headers(const _Handler& _hdr) -> void {
     for (self* _i = _first; _i != nullptr;) {
@@ -190,7 +181,6 @@ template <typename _Tp> template <typename _Handler> auto header<_Tp>::backward_
     }
 }
 
-namespace {
 static constexpr inline const char* fatal_node_range = "_first_node ^ _last_node";
 static constexpr inline const char* fatal_node_link = "invalid list<node>";
 static constexpr inline const char* fatal_node_header = "\\exists(list<node>)._header != this";
@@ -198,7 +188,7 @@ static constexpr inline const char* fatal_header_range = "_first ^ _last";
 static constexpr inline const char* fatal_header_link = "invalid list<header>";
 static constexpr inline const char* fatal_header_header = "\\exists(list<header>)._header != this";
 static constexpr inline const char* fatal_node_count = "\\sum(\\all(list<header>).size()) != size()";
-}
+
 template <typename _Tp> auto header<_Tp>::check() const -> void {
     size_t _count = 0ul;
     // check node
@@ -264,12 +254,12 @@ template <typename _Tp, typename _Alloc> struct alloc : public _Alloc {
     }
 };
 
-};
+}
 
 template <typename _Key, typename _Value, typename _Hash, typename _Alloc>
-struct disjoint_base : public short_tree::alloc<_Value, _Alloc> {
+struct disjoint_base : public alloc<_Value, _Alloc> {
 public:
-    using base = typename short_tree::alloc<_Value, _Alloc>;
+    using base = alloc<_Value, _Alloc>;
     using self = disjoint_base<_Key, _Value, _Hash, _Alloc>;
     using node_type = typename base::node_type;
     using header_type = typename base::header_type;
@@ -373,7 +363,7 @@ protected:
     auto _M_remove_empty_headers_from_bottom_to_top(header_type* _h) const -> void;
     auto _M_deallocate_header_recursively(header_type* const _h) const -> void;
 protected:
-    std::unordered_map<key_type, node_type*> _nodes;
+    std::unordered_map<key_type, node_type*, _Hash> _nodes;
     std::unordered_set<header_type*> _final_headers;
 };
 
@@ -557,7 +547,7 @@ namespace {
 static constexpr inline const char* fatal_empty_header = "\\exists(_final_headers)?.empty()";
 static constexpr inline const char* fatal_empty_node = "\\exists(_nodes) == nullptr";
 static constexpr inline const char* fatal_node_in_header = "\\exists(_nodes) not in \\any(_final_headers)";
-static constexpr inline const char* fatal_node_count = "_nodes.size() != \\sum(\\all(_final_headers).size())";
+static constexpr inline const char* fatal_nodes_count = "_nodes.size() != \\sum(\\all(_final_headers).size())";
 }
 template <typename _Key, typename _Value, typename _Hash, typename _Alloc> auto
 disjoint_base<_Key, _Value, _Hash, _Alloc>::check() const -> void {
@@ -567,7 +557,7 @@ disjoint_base<_Key, _Value, _Hash, _Alloc>::check() const -> void {
         _i->check();
         _count_from_headers += _i->size();
     }
-    if (_count_from_headers != _nodes.size()) throw std::logic_error(fatal_node_count);
+    if (_count_from_headers != _nodes.size()) throw std::logic_error(fatal_nodes_count);
     for (auto _i = _nodes.cbegin(); _i != _nodes.cend(); ++_i) {
         if (_i->second == nullptr) throw std::logic_error(fatal_empty_node);
         auto* const _h = _M_final_header_const(_i->second);
@@ -578,4 +568,4 @@ disjoint_base<_Key, _Value, _Hash, _Alloc>::check() const -> void {
 
 }
 
-#endif // _ICY_SHORT_TREE_HPP_
+#endif // _ICY_DISJOINT_BASE_HPP_
