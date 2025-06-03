@@ -1,4 +1,4 @@
-#include "disjoint_set.hpp"
+#include "disjoint.hpp"
 
 #include <string>
 

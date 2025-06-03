@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-#include "disjoint_map.hpp"
+#include "disjoint.hpp"
 
 #include <string>
 
